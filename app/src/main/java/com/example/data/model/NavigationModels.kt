@@ -8,7 +8,7 @@ enum class UkcStatus {
 
 data class VesselProfile(
   val id: String = "vessel-1",
-  val name: String = "NOAA S/V Ferdinand R. Hassler",
+  val name: String = "S/V Surveyor (example vessel)",
   val type: String = "Hydrographic Survey Vessel",
   val staticDraftMeters: Float = 3.8f,
   val beamMeters: Float = 16.5f,

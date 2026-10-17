@@ -46,7 +46,7 @@ class NavCastRepository {
         residualMeters = -1.33f,
         discrepancyType = "Shoaling Anomaly",
         rawNmeaSentence = "\$SDDPT,8.12,0.0*5E",
-        vesselName = "NOAA S/V Ferdinand R. Hassler",
+        vesselName = "S/V Surveyor",
         notes = "[SAMPLE — demonstration report, not a real submission] Post-nor'easter sand ridge migration outside Thimble Shoal channel boundary."
       ),
       GroundTruthReport(
@@ -82,16 +82,16 @@ class NavCastRepository {
         )
       }
     } catch (_: Exception) {
-      // Fallback seamlessly to CSDL hydrodynamic OFS model prediction
+      // Fall back to the NOAA OFS hydrodynamic model prediction
     }
 
     val timeNow = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.US).format(Date())
     S104WaterLevel(
       stationId = stationId,
-      stationName = "CSDL OFS Model Prediction ($stationId)",
+      stationName = "NOAA OFS Model Prediction ($stationId)",
       timestamp = "$timeNow GMT",
       waterLevelMeters = fallbackModelVal,
-      source = "CSDL OFS Hydrodynamic Run",
+      source = "NOAA OFS Hydrodynamic Model (fallback — not a live observation)",
       isLive = false
     )
   }

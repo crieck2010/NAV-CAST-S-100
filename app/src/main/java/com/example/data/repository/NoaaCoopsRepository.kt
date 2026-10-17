@@ -77,7 +77,7 @@ class NoaaCoopsRepository(
         return@withContext Result.success(waterLevel)
       } else {
         val errorMsg = response.error?.get("message")?.toString() ?: "No water level data returned"
-        val fallback = createFallbackWaterLevel(stationId, fallbackModelVal, "CSDL OFS Model ($errorMsg)")
+        val fallback = createFallbackWaterLevel(stationId, fallbackModelVal, "NOAA OFS Model ($errorMsg)")
         _waterLevelState.value = fallback
         return@withContext Result.success(fallback)
       }
@@ -85,7 +85,7 @@ class NoaaCoopsRepository(
       val fallback = createFallbackWaterLevel(
         stationId = stationId,
         fallbackVal = fallbackModelVal,
-        source = "CSDL OFS Hydrodynamic Run (Offline: ${e.localizedMessage ?: "Network error"})"
+        source = "NOAA OFS Hydrodynamic Model (offline fallback: ${e.localizedMessage ?: "Network error"})"
       )
       _waterLevelState.value = fallback
       return@withContext Result.success(fallback)

@@ -180,7 +180,7 @@ fun ModelValidatorScreen(
         Spacer(modifier = Modifier.width(10.dp))
         Column {
           Text(
-            text = "CSDL HYDRODYNAMIC MODEL GROUND-TRUTHING",
+            text = "HYDRODYNAMIC MODEL GROUND-TRUTHING",
             color = NeonCyan,
             fontSize = 10.sp,
             fontWeight = FontWeight.Bold,
@@ -448,7 +448,7 @@ fun ModelValidatorScreen(
     // Tab 0: In-Situ Residual & Ground Truth Reports
     when (selectedTab) {
       0 -> {
-        // Split Cards: Observed Depth vs CSDL Model Prediction
+        // Split Cards: Observed Depth vs OFS Model Prediction
       Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(10.dp)
@@ -500,7 +500,7 @@ fun ModelValidatorScreen(
           }
         }
 
-        // Right: CSDL OFS Model Prediction
+        // Right: NOAA OFS Model Prediction
         Card(
           colors = CardDefaults.cardColors(containerColor = NavySurface),
           shape = RoundedCornerShape(12.dp),
@@ -510,7 +510,7 @@ fun ModelValidatorScreen(
         ) {
           Column(modifier = Modifier.padding(12.dp)) {
             Text(
-              text = "CSDL MODEL DEPTH",
+              text = "MODEL DEPTH",
               color = TextSecondary,
               fontSize = 10.sp,
               fontWeight = FontWeight.Bold
@@ -531,7 +531,7 @@ fun ModelValidatorScreen(
             )
             Spacer(modifier = Modifier.height(6.dp))
             Text(
-              text = "Source: NBS Bathymetry + CSDL Hydrodynamic Model",
+              text = "Source: NBS Bathymetry + NOAA OFS Hydrodynamic Model",
               color = TextSecondary,
               fontSize = 9.sp,
               lineHeight = 12.sp
@@ -642,7 +642,7 @@ fun ModelValidatorScreen(
               )
               Spacer(modifier = Modifier.width(6.dp))
               Text(
-                text = "Flag & Report to CSDL",
+                text = "Flag & Report Discrepancy",
                 color = NavyBackground,
                 fontWeight = FontWeight.Bold,
                 fontSize = 12.sp
@@ -665,7 +665,7 @@ fun ModelValidatorScreen(
       Spacer(modifier = Modifier.height(12.dp))
 
       Text(
-        text = "SUBMITTED CSDL GROUND-TRUTH REPORTS (${state.groundTruthReports.size})",
+        text = "SUBMITTED GROUND-TRUTH REPORTS (${state.groundTruthReports.size})",
         color = TextSecondary,
         fontSize = 11.sp,
         fontWeight = FontWeight.Bold
@@ -800,7 +800,7 @@ fun ModelValidatorScreen(
               .clickable {
                 onStartSimulation()
                 showBluetoothDialog = false
-                Toast.makeText(context, "Started NOAA Survey Simulator", Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, "Started NAV-CAST Survey Simulator", Toast.LENGTH_SHORT).show()
               }
           ) {
             Row(
@@ -810,7 +810,7 @@ fun ModelValidatorScreen(
               Icon(Icons.Default.PlayArrow, contentDescription = "Simulate", tint = EmeraldSafe, modifier = Modifier.size(18.dp))
               Spacer(modifier = Modifier.width(8.dp))
               Column {
-                Text("NOAA Survey Echosounder (Simulator)", color = TextPrimary, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                Text("Survey Echosounder (Simulator)", color = TextPrimary, fontSize = 11.sp, fontWeight = FontWeight.Bold)
                 Text("Synthesizes realistic 200kHz \$SDDPT with wave heave", color = TextSecondary, fontSize = 9.sp)
               }
             }
@@ -924,7 +924,7 @@ fun ModelValidatorScreen(
       text = {
         Column {
           Text(
-            text = "Export ${state.retainedNmeaLogs.size} retained NMEA 0183 \$SDDPT records for analysis by NOAA CSDL hydrographers:",
+            text = "Export ${state.retainedNmeaLogs.size} retained NMEA 0183 \$SDDPT records for post-cruise analysis:",
             color = TextSecondary,
             fontSize = 12.sp
           )
@@ -939,7 +939,7 @@ fun ModelValidatorScreen(
               showExportDialog = false
               onExportLogs(ExportFormat.CSV) { file, intent ->
                 Toast.makeText(context, "Generated ${file.name}", Toast.LENGTH_SHORT).show()
-                context.startActivity(Intent.createChooser(intent, "Download NOAA Hydrographic CSV"))
+                context.startActivity(Intent.createChooser(intent, "Download Hydrographic CSV"))
               }
             }
           )
@@ -964,14 +964,14 @@ fun ModelValidatorScreen(
 
           // Format 3: NOAA JSON
           ExportFormatOption(
-            title = "NOAA CSDL JSON Dataset (.json)",
+            title = "NAV-CAST JSON Dataset (.json)",
             subtitle = "Kotlin Serialization schema with vessel metadata & survey specs",
             icon = Icons.Default.Storage,
             onClick = {
               showExportDialog = false
               onExportLogs(ExportFormat.JSON) { file, intent ->
                 Toast.makeText(context, "Generated ${file.name}", Toast.LENGTH_SHORT).show()
-                context.startActivity(Intent.createChooser(intent, "Download NOAA CSDL JSON"))
+                context.startActivity(Intent.createChooser(intent, "Download NAV-CAST JSON"))
               }
             }
           )
@@ -1024,7 +1024,7 @@ fun ModelValidatorScreen(
       onDismissRequest = { showJsonDialog = false },
       title = {
         Text(
-          text = "CSDL Telemetry Packet",
+          text = "Telemetry Packet",
           color = TextPrimary,
           fontSize = 16.sp,
           fontWeight = FontWeight.Bold
@@ -1033,7 +1033,7 @@ fun ModelValidatorScreen(
       text = {
         Column {
           Text(
-            text = "Automated JSON payload formatted for NOAA Coast Survey Development Laboratory modeling feedback ingestion:",
+            text = "Automated JSON payload formatted for hydrodynamic model validation review:",
             color = TextSecondary,
             fontSize = 11.sp
           )
@@ -1059,7 +1059,7 @@ fun ModelValidatorScreen(
         Button(
           onClick = {
             val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-            val clip = ClipData.newPlainText("CSDL Telemetry", state.lastReportJson)
+            val clip = ClipData.newPlainText("NAV-CAST Telemetry", state.lastReportJson)
             clipboard.setPrimaryClip(clip)
             Toast.makeText(context, "Telemetry JSON copied to clipboard", Toast.LENGTH_SHORT).show()
             showJsonDialog = false
@@ -1143,7 +1143,7 @@ private fun HistoricalLogSection(
             Icon(Icons.Default.Storage, contentDescription = "Storage", tint = NeonCyan, modifier = Modifier.size(16.dp))
             Spacer(modifier = Modifier.width(6.dp))
             Text(
-              text = "NOAA CSDL RAW NMEA 0183 ARCHIVE",
+              text = "RAW NMEA 0183 ARCHIVE",
               color = NeonCyan,
               fontSize = 11.sp,
               fontWeight = FontWeight.Bold

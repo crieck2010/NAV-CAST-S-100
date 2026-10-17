@@ -122,7 +122,7 @@ fun PocketVDatumScreen(
           letterSpacing = 0.5.sp
         )
         Text(
-          text = "CSDL Geodetic & Tidal Transformer",
+          text = "Geodetic & Tidal Datum Transformer",
           color = TextPrimary,
           fontSize = 16.sp,
           fontWeight = FontWeight.Bold
@@ -392,7 +392,7 @@ fun PocketVDatumScreen(
 
           // Geodetic Offsets Breakdown
           Text(
-            text = "VERTICAL SEPARATION PROFILE (CSDL VDATUM GRID)",
+            text = "VERTICAL SEPARATION PROFILE (REGIONAL OFFSETS — NOT THE VDATUM GRID)",
             color = TextSecondary,
             fontSize = 9.sp,
             fontWeight = FontWeight.Bold

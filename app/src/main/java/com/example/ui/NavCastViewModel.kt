@@ -290,9 +290,9 @@ class NavCastViewModel @JvmOverloads constructor(
 
   fun setVesselPreset(type: String) {
     val preset = when (type) {
-      "NOAA S/V Hassler" -> VesselProfile(
+      "S/V Surveyor" -> VesselProfile(
         id = "hassler",
-        name = "NOAA S/V Ferdinand R. Hassler",
+        name = "S/V Surveyor (example vessel)",
         type = "Hydrographic Survey Vessel",
         staticDraftMeters = 3.8f,
         beamMeters = 16.5f,
@@ -303,7 +303,7 @@ class NavCastViewModel @JvmOverloads constructor(
       )
       "Hydrographic Launch" -> VesselProfile(
         id = "hsl-2801",
-        name = "CSDL Survey Launch HSL-2801",
+        name = "Survey Launch 2801",
         type = "Coastal Survey Launch",
         staticDraftMeters = 1.3f,
         beamMeters = 3.6f,
@@ -504,7 +504,7 @@ class NavCastViewModel @JvmOverloads constructor(
       discrepancyType = type,
       rawNmeaSentence = state.currentNmeaSentence,
       vesselName = state.vesselProfile.name,
-      notes = notes.ifBlank { "Field telemetry report submitted to CSDL validation pipeline." }
+      notes = notes.ifBlank { "Field telemetry report submitted to the model-validation log." }
     )
 
     repository.addGroundTruthReport(report)
@@ -541,7 +541,7 @@ class NavCastViewModel @JvmOverloads constructor(
     _uiState.update {
       it.copy(
         lastReportJson = jsonTelemetry,
-        userNotification = "Discrepancy report $reportId dispatched to CSDL!"
+        userNotification = "Discrepancy report $reportId saved to the validation log!"
       )
     }
   }

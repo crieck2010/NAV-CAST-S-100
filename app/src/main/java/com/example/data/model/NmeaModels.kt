@@ -30,7 +30,7 @@ data class SddptSentence(
 }
 
 /**
- * Historical log entry retained for post-cruise hydrographic analysis by NOAA CSDL employees.
+ * Historical log entry retained for post-cruise hydrographic analysis.
  */
 @Serializable
 data class NmeaLogEntry(
@@ -52,7 +52,7 @@ data class NmeaLogEntry(
 )
 
 /**
- * NOAA Hydrographic Survey Telemetry Dataset for CSDL Model Validation.
+ * Hydrographic Survey Telemetry Dataset for hydrodynamic model validation.
  * Serialized to JSON or CSV for export and download.
  */
 @Serializable
@@ -66,10 +66,10 @@ data class NoaaSurveyDataset(
 data class NoaaDatasetMetadata(
   val vesselName: String,
   val surveyArea: String,
-  val organization: String = "NOAA Office of Coast Survey / CSDL",
+  val organization: String = "NAV-CAST S-100 (independent project)",
   val createdIso: String,
   val sounderDevice: String,
-  val softwareVersion: String = "NAV-CAST S-100 v1.0 (NOAA CSDL)",
+  val softwareVersion: String = "NAV-CAST S-100 v1.0",
   // Provenance: set by the exporter from the actual records.
   // containsSimulatedData is true if ANY record in the dataset is simulated;
   // per-record truth is NmeaLogEntry.isSimulated.

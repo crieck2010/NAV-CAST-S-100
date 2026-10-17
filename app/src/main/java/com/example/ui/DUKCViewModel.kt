@@ -22,7 +22,7 @@ data class DukcUiState(
   val blockCoefficient: Float = 0.68f,
   val safetyMarginMeters: Float = 1.0f,
   val isConfinedChannel: Boolean = true,
-  val vesselName: String = "NOAA S/V Ferdinand R. Hassler",
+  val vesselName: String = "S/V Surveyor (example vessel)",
   val vesselType: String = "Hydrographic Survey Vessel",
 
   // S-100 Ingested Environmental Parameters
@@ -204,9 +204,9 @@ class DUKCViewModel(
    */
   fun loadVesselPreset(preset: String) {
     when (preset) {
-      "NOAA S/V Hassler" -> _uiState.update {
+      "S/V Surveyor" -> _uiState.update {
         it.copy(
-          vesselName = "NOAA S/V Ferdinand R. Hassler",
+          vesselName = "S/V Surveyor (example vessel)",
           vesselType = "Hydrographic Survey Vessel",
           staticDraftMeters = 3.8f,
           beamMeters = 16.5f,
@@ -218,7 +218,7 @@ class DUKCViewModel(
       }
       "Hydrographic Launch" -> _uiState.update {
         it.copy(
-          vesselName = "CSDL Survey Launch HSL-2801",
+          vesselName = "Survey Launch 2801",
           vesselType = "Coastal Survey Launch",
           staticDraftMeters = 1.3f,
           beamMeters = 3.6f,

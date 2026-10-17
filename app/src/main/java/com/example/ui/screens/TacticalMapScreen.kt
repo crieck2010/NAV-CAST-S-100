@@ -152,7 +152,7 @@ fun TacticalMapScreen(
       horizontalArrangement = Arrangement.SpaceBetween,
       verticalAlignment = Alignment.CenterVertically
     ) {
-      // NOAA CSDL Region Selector Dropdown
+      // Survey Region Selector Dropdown
       Box {
         Surface(
           shape = RoundedCornerShape(10.dp),
@@ -177,9 +177,9 @@ fun TacticalMapScreen(
               contentAlignment = Alignment.Center
             ) {
               Text(
-                text = "NOAA",
+                text = "NC",
                 color = NoaaGold,
-                fontSize = 7.sp,
+                fontSize = 10.sp,
                 fontWeight = FontWeight.Black
               )
             }
@@ -187,7 +187,7 @@ fun TacticalMapScreen(
             Column {
               Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
-                  text = "CSDL S-100 NAVCAST",
+                  text = "NAV-CAST S-100",
                   color = NeonCyan,
                   fontSize = 9.sp,
                   fontWeight = FontWeight.Bold,
@@ -586,7 +586,7 @@ fun TacticalMapScreen(
                   Box(modifier = Modifier.size(8.dp).clip(CircleShape).background(EmeraldSafe))
                   Spacer(modifier = Modifier.width(6.dp))
                   Text(
-                    text = "NOAA CSDL OPERATIONAL FORECAST SYSTEM (OFS)",
+                    text = "NOAA OPERATIONAL FORECAST SYSTEM (OFS)",
                     color = TextSecondary,
                     fontSize = 10.sp,
                     fontWeight = FontWeight.SemiBold

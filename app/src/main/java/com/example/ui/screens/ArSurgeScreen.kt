@@ -260,7 +260,7 @@ fun ArSurgeScreen(
             fontWeight = FontWeight.Bold
           )
           Text(
-            text = String.format(Locale.US, "+%.2f m above MHHW (CSDL ADCIRC)", state.simulatedSurgeMeters),
+            text = String.format(Locale.US, "+%.2f m above MHHW (ADCIRC surge, simulated)", state.simulatedSurgeMeters),
             color = TextPrimary,
             fontSize = 13.sp,
             fontWeight = FontWeight.ExtraBold,

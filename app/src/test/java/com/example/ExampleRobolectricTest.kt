@@ -139,7 +139,7 @@ class ExampleRobolectricTest {
     )
 
     val datasetJson = dataService.serializeDatasetToJson(dataset)
-    assertTrue(datasetJson.contains("NOAA Office of Coast Survey / CSDL"))
+    assertTrue(datasetJson.contains("NAV-CAST S-100 (independent project)"))
     val deserializedDataset = dataService.deserializeDatasetFromJson(datasetJson)
     assertNotNull(deserializedDataset)
     assertEquals(1, deserializedDataset!!.totalRecords)
@@ -184,12 +184,12 @@ class ExampleRobolectricTest {
 
     // Verify Raw NMEA export format
     val nmeaStream = dataService.exportToRawNmea()
-    assertTrue(nmeaStream.contains("# NOAA Coast Survey Development Laboratory (CSDL)"))
+    assertTrue(nmeaStream.contains("# NAV-CAST S-100 \u2014 independent prototype (not a NOAA or CSDL product)"))
     assertTrue(nmeaStream.contains("\$SDDPT,"))
 
     // Verify JSON export format
     val json = dataService.exportToJson("NOAA Hassler", "Chesapeake Bay")
-    assertTrue(json.contains("NOAA Office of Coast Survey / CSDL"))
+    assertTrue(json.contains("NAV-CAST S-100 (independent project)"))
     assertTrue(json.contains("\"totalRecords\": 3"))
 
     // Test creating actual export file

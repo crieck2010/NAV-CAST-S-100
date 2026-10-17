@@ -263,7 +263,7 @@ fun NavCastMainShell(
         NavigationBarItem(
           selected = state.currentTab == NavigationTab.MODEL_VALIDATOR,
           onClick = { viewModel.selectTab(NavigationTab.MODEL_VALIDATOR) },
-          icon = { Icon(Icons.Default.Assessment, contentDescription = "CSDL Validator", modifier = Modifier.size(20.dp)) },
+          icon = { Icon(Icons.Default.Assessment, contentDescription = "Model Validator", modifier = Modifier.size(20.dp)) },
           label = { Text("Validator", fontSize = 10.sp, fontWeight = FontWeight.Bold) },
           colors = navBarColors(),
           modifier = Modifier.testTag("tab_validator")

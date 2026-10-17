@@ -496,13 +496,13 @@ fun VesselDukcCalculatorContent(
       horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
       listOf(
-        "NOAA S/V Hassler",
+        "S/V Surveyor",
         "Hydrographic Launch",
         "Post-Panamax Container",
         "Harbor Tug"
       ).forEach { preset ->
         val isSelected = state.vesselName.contains(preset.take(7)) ||
-            (preset.startsWith("NOAA") && state.vesselName.contains("Hassler")) ||
+            (preset.startsWith("S/V") && state.vesselName.contains("Surveyor")) ||
             (preset.startsWith("Hydro") && state.vesselName.contains("Launch")) ||
             (preset.startsWith("Post") && state.vesselName.contains("Atlantic"))
 
@@ -541,7 +541,7 @@ fun VesselDukcCalculatorContent(
     ) {
       Column(modifier = Modifier.padding(14.dp)) {
         Text(
-          text = "CSDL S-100 HYDRODYNAMIC FUSION FORMULA",
+          text = "S-100 HYDRODYNAMIC FUSION FORMULA",
           color = TextSecondary,
           fontSize = 10.sp,
           fontWeight = FontWeight.Bold,

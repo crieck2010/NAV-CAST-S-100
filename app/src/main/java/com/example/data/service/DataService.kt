@@ -54,13 +54,13 @@ data class DataServiceStats(
 enum class ExportFormat(val extension: String, val mimeType: String, val label: String) {
   CSV("csv", "text/csv", "Hydrographic CSV (.csv)"),
   RAW_NMEA("nmea", "text/plain", "Raw NMEA Stream (.nmea)"),
-  JSON("json", "application/json", "NOAA CSDL JSON (.json)")
+  JSON("json", "application/json", "NAV-CAST JSON (.json)")
 }
 
 /**
  * Service to parse incoming NMEA 0183 strings ($SDDPT) from external GPS/depth sounders
  * via Bluetooth SPP (Serial Port Profile) using Kotlin Serialization, and maintain a
- * persistent historical log for post-cruise analysis by NOAA CSDL employees.
+ * persistent historical log for post-cruise analysis.
  */
 class DataService(
   private val context: Context,
@@ -338,8 +338,8 @@ class DataService(
       if (_rawLogs.value.size % 5 == 0 || _rawLogs.value.size < 10) {
         val dataset = NoaaSurveyDataset(
           metadata = NoaaDatasetMetadata(
-            vesselName = "NOAA S/V Ferdinand R. Hassler",
-            surveyArea = "NOAA CSDL Validation Run",
+            vesselName = "S/V Surveyor",
+            surveyArea = "Unassigned Survey Area",
             createdIso = formatIsoTimestamp(System.currentTimeMillis()),
             sounderDevice = entry.sourceDevice
           ),
@@ -394,7 +394,7 @@ class DataService(
   // ==========================================
 
   /**
-   * Generates a standard Hydrographic Survey CSV file formatted for NOAA post-processing.
+   * Generates a standard Hydrographic Survey CSV file.
    */
   fun exportToCsv(): String {
     val sb = StringBuilder()
@@ -423,7 +423,7 @@ class DataService(
    */
   fun exportToRawNmea(): String {
     val sb = StringBuilder()
-    sb.appendLine("# NOAA Coast Survey Development Laboratory (CSDL)")
+    sb.appendLine("# NAV-CAST S-100 — independent prototype (not a NOAA or CSDL product)")
     sb.appendLine("# Hydrographic Telemetry Log - NMEA 0183 \$SDDPT Stream")
     sb.appendLine("# Exported: ${formatIsoTimestamp(System.currentTimeMillis())}")
     sb.appendLine("# Records: ${_rawLogs.value.size}")
@@ -440,7 +440,7 @@ class DataService(
   }
 
   /**
-   * Generates structured NOAA CSDL JSON dataset.
+   * Generates a structured NAV-CAST JSON dataset.
    */
   fun exportToJson(vesselName: String, surveyArea: String): String {
     val containsSimJson = _rawLogs.value.any { it.isSimulated }
@@ -448,7 +448,7 @@ class DataService(
       metadata = NoaaDatasetMetadata(
         vesselName = vesselName,
         surveyArea = surveyArea,
-        organization = "NOAA Office of Coast Survey / CSDL",
+        organization = "NAV-CAST S-100 (independent project)",
         createdIso = formatIsoTimestamp(System.currentTimeMillis()),
         sounderDevice = _connectedDeviceName.value,
         containsSimulatedData = containsSimJson,
@@ -470,11 +470,11 @@ class DataService(
    */
   suspend fun createExportFile(
     format: ExportFormat,
-    vesselName: String = "NOAA S/V Hassler",
+    vesselName: String = "S/V Surveyor",
     surveyArea: String = "Chesapeake Bay Approach"
   ): File = withContext(Dispatchers.IO) {
     val timestamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(Date())
-    val fileName = "NOAA_CSDL_SDDPT_${timestamp}.${format.extension}"
+    val fileName = "NAVCAST_SDDPT_${timestamp}.${format.extension}"
 
     val exportDir = File(context.cacheDir, "exports").apply { mkdirs() }
     val targetFile = File(exportDir, fileName)
@@ -502,7 +502,7 @@ class DataService(
     return Intent(Intent.ACTION_SEND).apply {
       type = format.mimeType
       putExtra(Intent.EXTRA_STREAM, uri)
-      putExtra(Intent.EXTRA_SUBJECT, "NOAA CSDL Hydrographic Log: ${file.name}")
+      putExtra(Intent.EXTRA_SUBJECT, "NAV-CAST S-100 Hydrographic Log: ${file.name}")
       putExtra(Intent.EXTRA_TEXT, "Exported ${format.label} containing ${_rawLogs.value.size} NMEA 0183 \$SDDPT records.")
       addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
     }
@@ -627,7 +627,7 @@ class DataService(
     stopSimulation()
     _isSimulationActive.value = true
     _connectionState.value = SppConnectionState.STREAMING
-    _connectedDeviceName.value = "NOAA Survey Sim (SPP)"
+    _connectedDeviceName.value = "NAV-CAST Survey Simulator (SPP)"
 
     simulationJob = scope.launch(Dispatchers.Default) {
       var step = 0
@@ -649,7 +649,7 @@ class DataService(
 
         ingestSentence(
           rawSentence = sentence,
-          sourceDevice = "SIMULATED — NOAA Sim SPP (200kHz)",
+          sourceDevice = "SIMULATED — NAV-CAST Sim SPP (200kHz)",
           lat = lat + (Math.random() - 0.5) * 0.001,
           lon = lon + (Math.random() - 0.5) * 0.001,
           isSimulated = true
