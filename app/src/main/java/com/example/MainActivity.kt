@@ -7,6 +7,7 @@ import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
@@ -224,10 +225,23 @@ fun NavCastMainShell(
       )
     },
     bottomBar = {
-      NavigationBar(
-        containerColor = NavySurface,
-        modifier = Modifier.testTag("navcast_bottom_nav")
-      ) {
+      Column {
+        // Standing disclaimer: visible on every tab.
+        Text(
+          text = "PROTOTYPE — NOT FOR NAVIGATION · Data is simulated unless marked live · Not affiliated with NOAA or the IHO",
+          color = TextSecondary,
+          fontSize = 8.sp,
+          fontWeight = FontWeight.Bold,
+          modifier = Modifier
+            .fillMaxWidth()
+            .background(NavySurface)
+            .padding(horizontal = 8.dp, vertical = 4.dp)
+            .testTag("navcast_disclaimer")
+        )
+        NavigationBar(
+          containerColor = NavySurface,
+          modifier = Modifier.testTag("navcast_bottom_nav")
+        ) {
         NavigationBarItem(
           selected = state.currentTab == NavigationTab.TACTICAL_MAP,
           onClick = { viewModel.selectTab(NavigationTab.TACTICAL_MAP) },
@@ -271,7 +285,8 @@ fun NavCastMainShell(
           label = { Text("VDatum", fontSize = 10.sp, fontWeight = FontWeight.Bold) },
           colors = navBarColors(),
           modifier = Modifier.testTag("tab_vdatum")
-        )
+          )
+        }
       }
     },
     snackbarHost = {
