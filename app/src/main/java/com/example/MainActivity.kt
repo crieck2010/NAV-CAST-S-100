@@ -316,7 +316,18 @@ fun NavCastMainShell(
           onToggleNmeaStream = { viewModel.toggleNmeaStreaming() },
           onManualDepthChanged = { viewModel.setManualObservedDepth(it) },
           onSubmitReport = { viewModel.submitGroundTruthReport(it) },
-          onDeleteReport = { viewModel.deleteReport(it) }
+          onDeleteReport = { viewModel.deleteReport(it) },
+          onConnectBluetoothDevice = { viewModel.connectBluetoothSpp(it) },
+          onDisconnectBluetooth = { viewModel.disconnectBluetoothSpp() },
+          onStartSimulation = { viewModel.startSppSimulation() },
+          onRefreshDevices = { viewModel.refreshPairedDevices() },
+          onClearHistoricalLogs = { viewModel.clearNmeaHistoricalLogs() },
+          onExportLogs = { format, callback -> viewModel.exportAndShareLogs(format, callback) },
+          onStartDiscovery = { viewModel.startBluetoothDiscovery() },
+          onStopDiscovery = { viewModel.stopBluetoothDiscovery() },
+          onTogglePairInstrument = { viewModel.togglePairInstrument(it) },
+          onToggleConnectInstrument = { viewModel.toggleConnectInstrument(it) },
+          onClearConnectivityStatus = { viewModel.clearConnectivityStatus() }
         )
 
         NavigationTab.AR_SURFACE -> ArSurgeScreen(

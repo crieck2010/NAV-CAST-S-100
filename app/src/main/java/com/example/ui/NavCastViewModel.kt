@@ -1,15 +1,27 @@
 package com.example.ui
 
-import androidx.lifecycle.ViewModel
+import android.app.Application
+import android.content.Context
+import android.content.Intent
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.data.model.BluetoothSppDevice
+import com.example.data.model.DiscoveredVesselInstrument
 import com.example.data.model.DukcResult
 import com.example.data.model.GroundTruthReport
+import com.example.data.model.NmeaLogEntry
 import com.example.data.model.S102Sounding
 import com.example.data.model.S104WaterLevel
+import com.example.data.model.SddptSentence
+import com.example.data.model.SppConnectionState
 import com.example.data.model.SurveyArea
 import com.example.data.model.VDatumResult
 import com.example.data.model.VesselProfile
 import com.example.data.repository.NavCastRepository
+import com.example.data.service.ConnectivityManager
+import com.example.data.service.DataService
+import com.example.data.service.DataServiceStats
+import com.example.data.service.ExportFormat
 import com.example.engine.DukcCalculator
 import com.example.engine.VDatumEngine
 import kotlinx.coroutines.Job
@@ -19,6 +31,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -36,7 +49,7 @@ data class NavCastUiState(
   val selectedAis: com.example.data.model.AisTarget? = null,
   val currentDukc: DukcResult,
   val isConfinedChannel: Boolean = true,
-  // Model validator state
+  // Model validator & NMEA state
   val isNmeaStreaming: Boolean = true,
   val currentNmeaSentence: String = "\$SDDPT,14.85,0.0*53",
   val observedTransducerDepth: Float = 14.85f,
@@ -44,6 +57,19 @@ data class NavCastUiState(
   val modelPredictedDepth: Float = 15.20f,
   val groundTruthReports: List<GroundTruthReport> = emptyList(),
   val lastReportJson: String? = null,
+  // Bluetooth SPP & DataService Historical Log Retention
+  val sppConnectionState: SppConnectionState = SppConnectionState.STREAMING,
+  val connectedSppDevice: String = "NOAA Sim SPP (200kHz)",
+  val latestSddpt: SddptSentence? = null,
+  val retainedNmeaLogs: List<NmeaLogEntry> = emptyList(),
+  val dataServiceStats: DataServiceStats = DataServiceStats(),
+  val isSppSimulating: Boolean = true,
+  val pairedBluetoothDevices: List<BluetoothSppDevice> = emptyList(),
+  // Bluetooth Vessel Instrument Discovery & Connectivity
+  val discoveredInstruments: List<DiscoveredVesselInstrument> = ConnectivityManager.DEFAULT_INSTRUMENTS,
+  val isScanningInstruments: Boolean = false,
+  val connectedInstrument: DiscoveredVesselInstrument? = null,
+  val connectivityStatusMessage: String? = null,
   // AR Simulation
   val simulatedSurgeMeters: Float = 1.8f,
   val showArBathymetryMesh: Boolean = true,
@@ -67,20 +93,92 @@ enum class NavigationTab {
   POCKET_VDATUM
 }
 
-class NavCastViewModel(
-  private val repository: NavCastRepository = NavCastRepository()
-) : ViewModel() {
+class NavCastViewModel @JvmOverloads constructor(
+  application: Application,
+  private val repository: NavCastRepository = NavCastRepository(),
+  val dataService: DataService = DataService(application.applicationContext)
+) : AndroidViewModel(application) {
 
   private val _uiState = MutableStateFlow(createInitialState())
   val uiState: StateFlow<NavCastUiState> = _uiState.asStateFlow()
 
-  private var nmeaStreamJob: Job? = null
-
   init {
     loadLiveWaterLevel()
-    startNmeaStream()
+    observeDataService()
     observeReports()
     calculateVDatum()
+    refreshPairedDevices()
+    startSppSimulation()
+  }
+
+  private fun observeDataService() {
+    viewModelScope.launch {
+      dataService.connectionState.collect { connState ->
+        _uiState.update { it.copy(sppConnectionState = connState) }
+      }
+    }
+    viewModelScope.launch {
+      dataService.connectedDeviceName.collect { name ->
+        _uiState.update { it.copy(connectedSppDevice = name) }
+      }
+    }
+    viewModelScope.launch {
+      dataService.latestSentence.collect { sentence ->
+        if (sentence != null) {
+          _uiState.update {
+            it.copy(
+              latestSddpt = sentence,
+              observedTransducerDepth = sentence.depthMeters.toFloat(),
+              currentNmeaSentence = sentence.rawSentence,
+              manualDepthInput = String.format(Locale.US, "%.2f", sentence.depthMeters)
+            )
+          }
+          recalculateDukc()
+        }
+      }
+    }
+    viewModelScope.launch {
+      dataService.rawLogs.collect { logs ->
+        _uiState.update { it.copy(retainedNmeaLogs = logs) }
+      }
+    }
+    viewModelScope.launch {
+      dataService.stats.collect { stats ->
+        _uiState.update { it.copy(dataServiceStats = stats) }
+      }
+    }
+    viewModelScope.launch {
+      dataService.isSimulationActive.collect { simActive ->
+        _uiState.update {
+          it.copy(
+            isSppSimulating = simActive,
+            isNmeaStreaming = simActive || it.sppConnectionState == SppConnectionState.STREAMING
+          )
+        }
+      }
+    }
+    viewModelScope.launch {
+      dataService.connectivityManager.discoveredInstruments.collect { list ->
+        _uiState.update { it.copy(discoveredInstruments = list) }
+      }
+    }
+    viewModelScope.launch {
+      dataService.connectivityManager.isScanning.collect { scanning ->
+        _uiState.update { it.copy(isScanningInstruments = scanning) }
+      }
+    }
+    viewModelScope.launch {
+      dataService.connectivityManager.connectedInstrument.collect { inst ->
+        _uiState.update { it.copy(connectedInstrument = inst) }
+      }
+    }
+    viewModelScope.launch {
+      dataService.connectivityManager.statusMessage.collect { msg ->
+        if (msg != null) {
+          _uiState.update { it.copy(connectivityStatusMessage = msg) }
+        }
+      }
+    }
   }
 
   private fun createInitialState(): NavCastUiState {
@@ -275,15 +373,90 @@ class NavCastViewModel(
     _uiState.update { it.copy(currentDukc = dukc) }
   }
 
-  // --- Hydrodynamic Model Validator & NMEA Streaming ---
+  // --- Hydrodynamic Model Validator, Bluetooth SPP & NMEA Streaming ---
 
   fun toggleNmeaStreaming() {
-    val newState = !_uiState.value.isNmeaStreaming
-    _uiState.update { it.copy(isNmeaStreaming = newState) }
-    if (newState) {
-      startNmeaStream()
+    if (_uiState.value.isSppSimulating || _uiState.value.sppConnectionState == SppConnectionState.STREAMING) {
+      dataService.stopSimulation()
+      dataService.disconnect()
+      _uiState.update { it.copy(isNmeaStreaming = false) }
     } else {
-      nmeaStreamJob?.cancel()
+      startSppSimulation()
+      _uiState.update { it.copy(isNmeaStreaming = true) }
+    }
+  }
+
+  fun startSppSimulation() {
+    val state = _uiState.value
+    dataService.startSimulation(
+      baseDepthMeters = state.modelPredictedDepth.toDouble(),
+      transducerOffsetMeters = 0.0,
+      intervalMs = 1200,
+      lat = state.selectedArea.centerLat,
+      lon = state.selectedArea.centerLon
+    )
+    _uiState.update { it.copy(isNmeaStreaming = true) }
+  }
+
+  fun stopSppSimulation() {
+    dataService.stopSimulation()
+    _uiState.update { it.copy(isNmeaStreaming = false) }
+  }
+
+  fun connectBluetoothSpp(device: BluetoothSppDevice) {
+    dataService.stopSimulation()
+    dataService.connectToDevice(device.address, device.name)
+    _uiState.update { it.copy(isNmeaStreaming = true) }
+  }
+
+  fun disconnectBluetoothSpp() {
+    dataService.disconnect()
+    _uiState.update { it.copy(isNmeaStreaming = false) }
+  }
+
+  fun refreshPairedDevices() {
+    val devices = dataService.getPairedDevices()
+    _uiState.update { it.copy(pairedBluetoothDevices = devices) }
+  }
+
+  // --- Bluetooth Vessel Instrument Discovery & Connectivity Service ---
+
+  fun startBluetoothDiscovery() {
+    dataService.connectivityManager.startDiscovery()
+  }
+
+  fun stopBluetoothDiscovery() {
+    dataService.connectivityManager.stopDiscovery()
+  }
+
+  fun togglePairInstrument(instrument: DiscoveredVesselInstrument) {
+    dataService.connectivityManager.togglePair(instrument)
+  }
+
+  fun toggleConnectInstrument(instrument: DiscoveredVesselInstrument) {
+    dataService.connectivityManager.toggleConnect(instrument)
+  }
+
+  fun clearConnectivityStatus() {
+    dataService.connectivityManager.clearStatusMessage()
+    _uiState.update { it.copy(connectivityStatusMessage = null) }
+  }
+
+  fun clearNmeaHistoricalLogs() {
+    dataService.clearRetainedLogs()
+    _uiState.update { it.copy(userNotification = "Historical NMEA raw data log cleared.") }
+  }
+
+  fun exportAndShareLogs(format: ExportFormat, onReady: (File, Intent) -> Unit) {
+    viewModelScope.launch {
+      val state = _uiState.value
+      val file = dataService.createExportFile(
+        format = format,
+        vesselName = state.vesselProfile.name,
+        surveyArea = state.selectedArea.name
+      )
+      val intent = dataService.createShareIntent(file, format)
+      onReady(file, intent)
     }
   }
 
@@ -295,30 +468,14 @@ class NavCastViewModel(
         observedTransducerDepth = parsed
       )
     }
-  }
-
-  private fun startNmeaStream() {
-    nmeaStreamJob?.cancel()
-    nmeaStreamJob = viewModelScope.launch {
-      while (true) {
-        delay(1800)
-        if (_uiState.value.isNmeaStreaming) {
-          val base = _uiState.value.modelPredictedDepth
-          // Subtle acoustic variance (+/- 0.35m) with occasional shoaling variation
-          val delta = ((Math.random() - 0.48) * 0.7).toFloat()
-          val depth = String.format(Locale.US, "%.2f", base + delta).toFloat()
-          val sentence = "\$SDDPT,$depth,0.0*${(30..90).random()}"
-
-          _uiState.update {
-            it.copy(
-              observedTransducerDepth = depth,
-              currentNmeaSentence = sentence,
-              manualDepthInput = depth.toString()
-            )
-          }
-        }
-      }
-    }
+    // Also ingest into data service log as manual depth sounding
+    val formatted = dataService.formatSddptSentence(parsed.toDouble(), 0.0, "SD")
+    dataService.ingestSentence(
+      rawSentence = formatted,
+      sourceDevice = "Manual Calibration Input",
+      lat = _uiState.value.selectedArea.centerLat,
+      lon = _uiState.value.selectedArea.centerLon
+    )
   }
 
   fun submitGroundTruthReport(notes: String = "") {
