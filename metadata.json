@@ -1,0 +1,6 @@
+{
+  "name": "NAV-CAST S-100",
+  "description": "Precision marine navigation, dynamic under-keel clearance (DUKC) engine, and NOAA CSDL hydrodynamic model validator.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
