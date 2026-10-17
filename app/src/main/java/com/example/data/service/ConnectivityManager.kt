@@ -43,61 +43,67 @@ class ConnectivityManager(
   companion object {
     val SPP_UUID: UUID = UUID.fromString("00001101-0000-1000-8000-00805F9B34FB")
 
-    // Default simulated vessel instruments available when physical hardware is not detected
+    // SIMULATED demo instruments, shown (labelled SIM) so the UI can be
+    // exercised without hardware. These are NOT real discovered devices.
     val DEFAULT_INSTRUMENTS: List<DiscoveredVesselInstrument> = listOf(
       DiscoveredVesselInstrument(
         id = "00:1A:7D:DA:71:01",
-        name = "Odom Hydrotrac II (CSDL)",
+        name = "SIM — Odom Hydrotrac II (Demo)",
         address = "00:1A:7D:DA:71:01",
         type = VesselInstrumentType.DEPTH_SOUNDER,
         rssi = -54,
         isBonded = true,
         isConnected = false,
         supportedSentences = listOf("\$SDDPT", "\$SDDBT"),
+        isSimulated = true,
         manufacturer = "Teledyne Odom Hydrographic"
       ),
       DiscoveredVesselInstrument(
         id = "00:1B:DC:04:8A:22",
-        name = "Vesper Marine XB-8000 AIS",
+        name = "SIM — Vesper Marine XB-8000 AIS (Demo)",
         address = "00:1B:DC:04:8A:22",
         type = VesselInstrumentType.AIS_TRANSPONDER,
         rssi = -62,
         isBonded = false,
         isConnected = false,
         supportedSentences = listOf("!AIVDM", "!AIVDO", "\$GPGGA"),
+        isSimulated = true,
         manufacturer = "Vesper Marine (Garmin)"
       ),
       DiscoveredVesselInstrument(
         id = "B8:27:EB:19:C3:44",
-        name = "Actisense W2K-1 NMEA Gateway",
+        name = "SIM — Actisense W2K-1 NMEA Gateway (Demo)",
         address = "B8:27:EB:19:C3:44",
         type = VesselInstrumentType.NMEA_GATEWAY,
         rssi = -68,
         isBonded = true,
         isConnected = false,
         supportedSentences = listOf("\$SDDPT", "!AIVDM", "\$GPRMC"),
+        isSimulated = true,
         manufacturer = "Active Research Ltd (Actisense)"
       ),
       DiscoveredVesselInstrument(
         id = "AC:67:84:55:12:90",
-        name = "Garmin GPS 24xd Marine",
+        name = "SIM — Garmin GPS 24xd Marine (Demo)",
         address = "AC:67:84:55:12:90",
         type = VesselInstrumentType.GPS_RECEIVER,
         rssi = -73,
         isBonded = false,
         isConnected = false,
         supportedSentences = listOf("\$GPGGA", "\$GPRMC", "\$HCHDG"),
+        isSimulated = true,
         manufacturer = "Garmin International"
       ),
       DiscoveredVesselInstrument(
         id = "70:B3:D5:E8:22:19",
-        name = "Airmar DST810 Smart Triducer",
+        name = "SIM — Airmar DST810 Smart Triducer (Demo)",
         address = "70:B3:D5:E8:22:19",
         type = VesselInstrumentType.DEPTH_SOUNDER,
         rssi = -79,
         isBonded = false,
         isConnected = false,
         supportedSentences = listOf("\$SDDPT", "\$VWVHW", "\$YXXDR"),
+        isSimulated = true,
         manufacturer = "Airmar Technology Corp"
       )
     )
@@ -222,7 +228,8 @@ class ConnectivityManager(
       mergeSimulatedInstruments()
       delay(1500)
       _isScanning.value = false
-      _statusMessage.value = "Discovery finished. ${_discoveredInstruments.value.size} vessel instruments available."
+      val simCount = _discoveredInstruments.value.count { it.isSimulated }
+      _statusMessage.value = "Discovery finished. ${_discoveredInstruments.value.size} vessel instruments available ($simCount are SIMULATED demo instruments, labelled SIM)."
     }
   }
 
@@ -380,11 +387,29 @@ class ConnectivityManager(
         } finally {
           disconnectSocket()
         }
-      } else {
-        // High-fidelity fallback / simulated stream for marine instrument
+      } else if (instrument.isSimulated) {
+        // Explicit simulation ONLY: the user deliberately selected one of the
+        // labelled SIM demo instruments. The stream is synthetic and is
+        // announced as such — it is never a fallback for a failed real
+        // connection.
         delay(600) // Brief connection handshake simulation
         onConnectionEstablished(instrument)
+        _statusMessage.value =
+          "SIMULATED: streaming synthetic NMEA from demo instrument '${instrument.name}'. No real device is connected."
         startTelemetryStreamSimulation(instrument)
+      } else {
+        // Real connection failed. Fail visibly — do NOT silently substitute a
+        // simulated stream (removed 2026-10-17: the previous behaviour
+        // reported a failed connection as 'Connected… Streaming telemetry'
+        // while streaming invented data).
+        disconnectSocket()
+        _connectedInstrument.value = null
+        _connectionState.value = SppConnectionState.ERROR
+        _statusMessage.value =
+          "Could not connect to '${instrument.name}' over Bluetooth SPP. No data is streaming, and simulation was NOT started."
+        _discoveredInstruments.update { list ->
+          list.map { it.copy(isConnected = false, isConnecting = false) }
+        }
       }
     }
   }
@@ -410,10 +435,18 @@ class ConnectivityManager(
   }
 
   private fun onConnectionEstablished(instrument: DiscoveredVesselInstrument) {
-    val activeInst = instrument.copy(isConnected = true, isConnecting = false, isBonded = true)
+    val activeInst = instrument.copy(
+      isConnected = true,
+      isConnecting = false,
+      isBonded = if (instrument.isSimulated) instrument.isBonded else true
+    )
     _connectedInstrument.value = activeInst
     _connectionState.value = SppConnectionState.STREAMING
-    _statusMessage.value = "Connected to ${instrument.name}. Streaming NMEA telemetry."
+    _statusMessage.value = if (instrument.isSimulated) {
+      "SIMULATED instrument '${instrument.name}' selected. Streaming synthetic NMEA telemetry."
+    } else {
+      "Connected to ${instrument.name}. Streaming NMEA telemetry."
+    }
 
     _discoveredInstruments.update { list ->
       list.map { inst ->

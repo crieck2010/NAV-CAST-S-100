@@ -58,12 +58,12 @@ data class NavCastUiState(
   val groundTruthReports: List<GroundTruthReport> = emptyList(),
   val lastReportJson: String? = null,
   // Bluetooth SPP & DataService Historical Log Retention
-  val sppConnectionState: SppConnectionState = SppConnectionState.STREAMING,
-  val connectedSppDevice: String = "NOAA Sim SPP (200kHz)",
+  val sppConnectionState: SppConnectionState = SppConnectionState.DISCONNECTED,
+  val connectedSppDevice: String = "None",
   val latestSddpt: SddptSentence? = null,
   val retainedNmeaLogs: List<NmeaLogEntry> = emptyList(),
   val dataServiceStats: DataServiceStats = DataServiceStats(),
-  val isSppSimulating: Boolean = true,
+  val isSppSimulating: Boolean = false,
   val pairedBluetoothDevices: List<BluetoothSppDevice> = emptyList(),
   // Bluetooth Vessel Instrument Discovery & Connectivity
   val discoveredInstruments: List<DiscoveredVesselInstrument> = ConnectivityManager.DEFAULT_INSTRUMENTS,
@@ -108,7 +108,10 @@ class NavCastViewModel @JvmOverloads constructor(
     observeReports()
     calculateVDatum()
     refreshPairedDevices()
-    startSppSimulation()
+    // Simulation does NOT auto-start (changed 2026-10-17). A simulated NMEA
+    // stream previously began silently on app launch and fed the validator
+    // invented depths by default. It now starts only when the user presses
+    // an explicitly labelled simulator control.
   }
 
   private fun observeDataService() {

@@ -47,7 +47,7 @@ class NavCastRepository {
         discrepancyType = "Shoaling Anomaly",
         rawNmeaSentence = "\$SDDPT,8.12,0.0*5E",
         vesselName = "NOAA S/V Ferdinand R. Hassler",
-        notes = "Post-nor'easter sand ridge migration outside Thimble Shoal channel boundary."
+        notes = "[SAMPLE — demonstration report, not a real submission] Post-nor'easter sand ridge migration outside Thimble Shoal channel boundary."
       ),
       GroundTruthReport(
         id = "REP-2026-002",
@@ -60,7 +60,7 @@ class NavCastRepository {
         discrepancyType = "Channel Deepening",
         rawNmeaSentence = "\$SDDPT,15.65,0.0*58",
         vesselName = "Survey Launch 2801",
-        notes = "USACE maintenance dredging verification."
+        notes = "[SAMPLE — demonstration report, not a real submission] USACE maintenance dredging verification."
       )
     )
   }

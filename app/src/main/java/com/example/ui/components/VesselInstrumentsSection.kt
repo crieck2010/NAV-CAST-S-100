@@ -476,6 +476,15 @@ fun VesselInstrumentCard(
               fontFamily = FontFamily.Monospace,
               maxLines = 1
             )
+            if (instrument.isSimulated) {
+              Text(
+                text = "SIMULATED DEMO — NOT A REAL DEVICE",
+                color = AmberAlert,
+                fontSize = 9.sp,
+                fontWeight = FontWeight.Bold,
+                maxLines = 1
+              )
+            }
           }
         }
 

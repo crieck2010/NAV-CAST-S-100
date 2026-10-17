@@ -94,8 +94,12 @@ AI Studio artifact and is not needed to build or run the app.
 
 ## Roadmap
 
-- [ ] Label simulated vs. live data end-to-end, including a provenance flag
-      in every export (in progress — see disclaimer above)
+- [x] Label simulated vs. live data end-to-end, including a provenance flag
+      in every export — done 2026-10-17: demo Bluetooth instruments are
+      renamed and badged SIM, the silent Bluetooth simulation fallback and
+      the auto-start simulation on launch are removed, every NMEA log
+      record carries an `isSimulated` flag, and the CSV / raw NMEA / JSON
+      exports all state whether simulated data is present
 - [ ] Consolidate the two Bluetooth SPP implementations into one transport
 - [ ] Parse `$GPGGA` / `$GPRMC` so logged soundings carry a real position
 - [ ] Real S-111 HDF5 ingest from NOAA's AWS Open Data distribution —
@@ -113,6 +117,9 @@ AI Studio artifact and is not needed to build or run the app.
   CSV / NMEA / JSON export added to the Model Validator.
 - **2026-10-17** — Hygiene pass: this README, MIT license, repository
   description/topics, and an in-app not-for-navigation disclaimer.
+- **2026-10-17** — Provenance pass: simulated data labelled end-to-end
+  (SIM demo instruments, map layer labels, per-record export flags);
+  silent Bluetooth simulation fallback and launch auto-simulation removed.
 
 ## License
 

@@ -45,7 +45,10 @@ data class NmeaLogEntry(
   val sourceDevice: String,
   val isValidChecksum: Boolean,
   val latitude: Double? = null,
-  val longitude: Double? = null
+  val longitude: Double? = null,
+  // Provenance: true when this record came from the built-in simulator or a
+  // simulated demo instrument rather than a real connected device.
+  val isSimulated: Boolean = false
 )
 
 /**
@@ -66,7 +69,12 @@ data class NoaaDatasetMetadata(
   val organization: String = "NOAA Office of Coast Survey / CSDL",
   val createdIso: String,
   val sounderDevice: String,
-  val softwareVersion: String = "NAV-CAST S-100 v1.0 (NOAA CSDL)"
+  val softwareVersion: String = "NAV-CAST S-100 v1.0 (NOAA CSDL)",
+  // Provenance: set by the exporter from the actual records.
+  // containsSimulatedData is true if ANY record in the dataset is simulated;
+  // per-record truth is NmeaLogEntry.isSimulated.
+  val containsSimulatedData: Boolean = false,
+  val provenance: String = "UNSPECIFIED"
 )
 
 /**
@@ -117,6 +125,9 @@ data class DiscoveredVesselInstrument(
   val isConnected: Boolean = false,
   val isConnecting: Boolean = false,
   val supportedSentences: List<String> = emptyList(),
+  // Provenance: true for the built-in demo instruments, which are NOT real
+  // discovered devices. The UI must label these as simulated.
+  val isSimulated: Boolean = false,
   val manufacturer: String = "Marine Electronics",
   val lastSeenTimestamp: Long = System.currentTimeMillis()
 ) {

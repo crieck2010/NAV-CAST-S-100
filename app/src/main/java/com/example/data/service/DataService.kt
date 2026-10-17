@@ -118,7 +118,8 @@ class DataService(
     onSentenceReceived = { rawSentence, instrument ->
       ingestSentence(
         rawSentence = rawSentence,
-        sourceDevice = "${instrument.type.label}: ${instrument.name}"
+        sourceDevice = "${instrument.type.label}: ${instrument.name}",
+        isSimulated = instrument.isSimulated
       )
     }
   )
@@ -260,7 +261,8 @@ class DataService(
     rawSentence: String,
     sourceDevice: String = _connectedDeviceName.value,
     lat: Double? = null,
-    lon: Double? = null
+    lon: Double? = null,
+    isSimulated: Boolean = false
   ): NmeaLogEntry? {
     val parsed = parseSddpt(rawSentence)
     _stats.update { s ->
@@ -287,7 +289,8 @@ class DataService(
       sourceDevice = sourceDevice,
       isValidChecksum = parsed.isChecksumValid,
       latitude = lat,
-      longitude = lon
+      longitude = lon,
+      isSimulated = isSimulated
     )
 
     // Update in-memory log
@@ -395,7 +398,7 @@ class DataService(
    */
   fun exportToCsv(): String {
     val sb = StringBuilder()
-    sb.appendLine("Timestamp_ISO,Timestamp_Epoch_Ms,Sentence_Type,Depth_Meters,Offset_Meters,Corrected_Depth_Meters,Valid_Checksum,Source_Device,Latitude,Longitude,Raw_NMEA")
+    sb.appendLine("Timestamp_ISO,Timestamp_Epoch_Ms,Sentence_Type,Depth_Meters,Offset_Meters,Corrected_Depth_Meters,Valid_Checksum,Source_Device,Latitude,Longitude,Raw_NMEA,Is_Simulated")
     for (item in _rawLogs.value.reversed()) {
       sb.appendLine(
         "${item.isoTimestamp}," +
@@ -408,7 +411,8 @@ class DataService(
           "\"${item.sourceDevice}\"," +
           (item.latitude?.toString() ?: "") + "," +
           (item.longitude?.toString() ?: "") + "," +
-          "\"${item.rawSentence}\""
+          "\"${item.rawSentence}\"" +
+          ",${item.isSimulated}"
       )
     }
     return sb.toString()
@@ -423,6 +427,11 @@ class DataService(
     sb.appendLine("# Hydrographic Telemetry Log - NMEA 0183 \$SDDPT Stream")
     sb.appendLine("# Exported: ${formatIsoTimestamp(System.currentTimeMillis())}")
     sb.appendLine("# Records: ${_rawLogs.value.size}")
+    val containsSimNmea = _rawLogs.value.any { it.isSimulated }
+    sb.appendLine("# Contains simulated data: ${if (containsSimNmea) "YES" else "NO"}")
+    if (containsSimNmea) {
+      sb.appendLine("# WARNING: SIMULATED records are present. Per-record flags are in the CSV and JSON exports (Is_Simulated / isSimulated); raw sentences below are not individually flagged.")
+    }
     sb.appendLine("# -------------------------------------------------------------")
     for (item in _rawLogs.value.reversed()) {
       sb.appendLine(item.rawSentence)
@@ -434,13 +443,20 @@ class DataService(
    * Generates structured NOAA CSDL JSON dataset.
    */
   fun exportToJson(vesselName: String, surveyArea: String): String {
+    val containsSimJson = _rawLogs.value.any { it.isSimulated }
     val dataset = NoaaSurveyDataset(
       metadata = NoaaDatasetMetadata(
         vesselName = vesselName,
         surveyArea = surveyArea,
         organization = "NOAA Office of Coast Survey / CSDL",
         createdIso = formatIsoTimestamp(System.currentTimeMillis()),
-        sounderDevice = _connectedDeviceName.value
+        sounderDevice = _connectedDeviceName.value,
+        containsSimulatedData = containsSimJson,
+        provenance = when {
+          _rawLogs.value.isEmpty() -> "EMPTY LOG — no records"
+          containsSimJson -> "CONTAINS SIMULATED DATA — per-record isSimulated flags are authoritative"
+          else -> "REAL — all records recorded from a connected instrument"
+        }
       ),
       totalRecords = _rawLogs.value.size,
       records = _rawLogs.value.reversed()
@@ -633,9 +649,10 @@ class DataService(
 
         ingestSentence(
           rawSentence = sentence,
-          sourceDevice = "NOAA Sim SPP (200kHz)",
+          sourceDevice = "SIMULATED — NOAA Sim SPP (200kHz)",
           lat = lat + (Math.random() - 0.5) * 0.001,
-          lon = lon + (Math.random() - 0.5) * 0.001
+          lon = lon + (Math.random() - 0.5) * 0.001,
+          isSimulated = true
         )
       }
     }

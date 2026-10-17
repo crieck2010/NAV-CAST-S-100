@@ -318,13 +318,13 @@ fun TacticalMapScreen(
             FilterChip(
               selected = layerBathymetry,
               onClick = { layerBathymetry = !layerBathymetry },
-              label = { Text("S-102 Bathymetry", fontSize = 10.sp) },
+              label = { Text("S-102 Bathymetry · SIM", fontSize = 10.sp) },
               colors = FilterChipDefaults.filterChipColors(selectedContainerColor = OceanicBlue.copy(alpha = 0.3f), selectedLabelColor = NeonCyan)
             )
             FilterChip(
               selected = layerCurrents,
               onClick = { layerCurrents = !layerCurrents },
-              label = { Text("S-111 Currents", fontSize = 10.sp) },
+              label = { Text("S-111 Currents · SIM", fontSize = 10.sp) },
               colors = FilterChipDefaults.filterChipColors(selectedContainerColor = OceanicBlue.copy(alpha = 0.3f), selectedLabelColor = NeonCyan)
             )
             FilterChip(
