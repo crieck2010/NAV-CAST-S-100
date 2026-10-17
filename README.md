@@ -100,7 +100,7 @@ AI Studio artifact and is not needed to build or run the app.
 - [ ] Parse `$GPGGA` / `$GPRMC` so logged soundings carry a real position
 - [ ] Real S-111 HDF5 ingest from NOAA's AWS Open Data distribution —
       specced 2026-10-17, awaiting build go-ahead:
-      [docs/2026-10-17_s111-hdf5-ingest-spec_v0.1.0.md](docs/2026-10-17_s111-hdf5-ingest-spec_v0.1.0.md)
+      [docs/2026-10-17_s111-hdf5-ingest-spec_v0.1.1.md](docs/2026-10-17_s111-hdf5-ingest-spec_v0.1.1.md)
 - [ ] Real S-102 (edition 3.0.0) bathymetric surface ingest
 - [ ] Move DUKC toward the IHO S-129 under-keel clearance specification,
       including uncertainty

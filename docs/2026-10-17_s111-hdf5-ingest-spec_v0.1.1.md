@@ -2,7 +2,7 @@
 
 | Field | Value |
 |---|---|
-| Spec version | v0.1.0 |
+| Spec version | v0.1.1 (corrected — see revision note at end) |
 | Date | 2026-10-17 |
 | Status | **Specced — awaiting Charlie's go-ahead to build (phase gate)** |
 | Repo | crieck2010/NAV-CAST-S-100 |
@@ -104,15 +104,16 @@ Verified on `111US00_CBOFS_20260916T00Z_US4DE1DA.h5` (Delaware Bay tile):
 
 ### 3.4 Golden fixture (verified values for tests)
 
-`111US00_CBOFS_20261017T00Z_US4VA1BD.h5` (350,199 bytes) — the CBOFS tile
+`111US00_CBOFS_20261017T00Z_US4VA1BF.h5` (670,347 bytes) — the CBOFS tile
 covering the app's Chesapeake area centre:
 
 - Bounds: W −76.2, E −75.9, S 36.9, N 37.2; grid 54×54; 48 time groups.
 - First record `20261017T010000Z`, last `20261019T000000Z`, interval 3600 s.
-- Group_001: exactly **550 valid (non-fill) cells** of 2,916;
-  max valid speed **1.03 knots**.
-- The area centre cell itself is fill in Group_001 — tests must not assume
-  the centre is water.
+- Group_001: exactly **2,403 valid (non-fill) cells** of 2,916;
+  max valid speed **1.67 knots**.
+- The area centre cell (row 15, col 16 from the SW origin) is valid water
+  in Group_001: **0.61 knots toward 135.3°**. Cell (0, 0) — the SW corner
+  at 36.900, −76.200 — is fill. Tests use both.
 
 ## 4. Architecture
 
@@ -168,7 +169,7 @@ Rejected, with reasons:
 **Risk + spike gate (T0):** jHDF's compound-dataset support on Android must
 be proven before anything else is built. T0 is a throwaway spike: add the
 dependency, open the golden fixture, read `Group_001/values`, print the
-valid-cell count. **Pass = 550.** If jHDF fails on the compound dataset or
+valid-cell count. **Pass = 2,403.** If jHDF fails on the compound dataset or
 the chunked layout, STOP and report back — do not silently substitute a
 library; the fallback decision returns to Charlie.
 
@@ -200,7 +201,7 @@ do not add an AWS SDK.
 
 ### 6.2 Tile selection (static registry, generated once)
 
-Tile filenames (`…_US4VA1BD`) carry no coordinates, and probing every tile
+Tile filenames (`…_US4VA1BF`) carry no coordinates, and probing every tile
 header at runtime is wasteful. Therefore:
 
 - **T1 (one-time, off-device):** a Python script (`tools/build_s111_registry.py`,
@@ -209,10 +210,10 @@ header at runtime is wasteful. Therefore:
   `app/src/main/assets/s111_tiles.json`:
   `{ model, tileId, west, east, south, north }[]`.
 - Verified first entry (must appear in the output):
-  `cbofs / US4VA1BD / W −76.2 E −75.9 S 36.9 N 37.2`.
+  `cbofs / US4VA1BF / W −76.2 E −75.9 S 36.9 N 37.2`.
 - Runtime selection: tiles whose bounds intersect the survey area's bounding
   box (area centre ± 0.15° for v1). For Chesapeake v1 this resolves to
-  exactly `US4VA1BD`. If several intersect, pick the one containing the
+  exactly `US4VA1BF`. If several intersect, pick the one containing the
   centre; if none contains it, pick the nearest by centre distance and
   surface that fact in `s111Status` (no silent substitution).
 
@@ -335,7 +336,7 @@ gap, never widen it.
 Fixtures committed under `app/src/test/resources/s111/` (binary files in
 git are accepted for this project — see decision D2):
 
-- `111US00_CBOFS_20261017T00Z_US4VA1BD.h5` (golden fixture, §3.4)
+- `111US00_CBOFS_20261017T00Z_US4VA1BF.h5` (golden fixture, §3.4)
 - `111US00_CBOFS_20260916T00Z_US4DE1DA.h5` (second tile, guards against
   single-tile overfitting)
 
@@ -350,13 +351,15 @@ git are accepted for this project — see decision D2):
    a code-review checkpoint, marked as such).
 3. Time: step 0 valid time `20261017T010000Z`, step 47
    `20261019T000000Z`, strictly increasing by 3600 s.
-4. Fill masking: Group_001 (step 0) valid-cell count == **550**;
-   max valid speed == 1.03 kn ± 0.01.
+4. Fill masking: Group_001 (step 0) valid-cell count == **2,403**;
+   max valid speed == 1.67 kn ± 0.01.
 5. Orientation: valid mask matches the stored geography per §7.6 (assert
-   a known water cell is valid and a known land cell — the area centre
-   cell — is fill, in step 0).
+   a known water cell is valid — the area centre cell (row 15, col 16)
+   reads 0.61 kn toward 135.3° — and a known land cell, (0, 0) at the SW
+   corner, is fill, in step 0).
 6. `currentAt` at a known water coordinate returns that cell's
-   speed/direction; at the centre coordinate returns null (fill).
+   speed/direction (centre cell: 0.61 kn, 135.3°); at the SW-corner
+   coordinate (36.900, −76.200, a fill cell) returns null.
 
 **Catalog tests:** recorded S3 listing XML (text fixture) → parser yields
 the expected latest cycle for CBOFS (00Z sample) and NGOFS2 (03Z sample —
@@ -367,15 +370,15 @@ x/y within 0..1, provenance fields populated; failure path yields
 `Error` status and zero live vectors (never simulated-in-disguise).
 
 **Spike test (T0):** jHDF opens the golden fixture on JVM *and* in an
-instrumented/Robolectric run, reads the compound dataset, count == 550.
+instrumented/Robolectric run, reads the compound dataset, count == 2,403.
 If this fails, the build stops at T0 per §5.
 
 ## 12. Build sequence (each task = one check-in; stop at the gate)
 
 | Task | Work | Acceptance |
 |---|---|---|
-| **T0 Spike** | jHDF dependency + throwaway read of golden fixture | Valid-cell count 550 printed on JVM and Android; GO/NO-GO reported before T1 starts |
-| **T1 Registry** | `tools/build_s111_registry.py` + `s111_tiles.json` for cbofs/tbofs/ngofs2; covering tiles for all 3 area centres identified | JSON contains US4VA1BD with §3.4 bounds; Tampa/Houston covering tiles named in the T1 report |
+| **T0 Spike** | jHDF dependency + throwaway read of golden fixture | Valid-cell count 2,403 printed on JVM and Android; GO/NO-GO reported before T1 starts |
+| **T1 Registry** | `tools/build_s111_registry.py` + `s111_tiles.json` for cbofs/tbofs/ngofs2; covering tiles for all 3 area centres identified | JSON contains US4VA1BF with §3.4 bounds; Tampa/Houston covering tiles named in the T1 report |
 | **T2 Reader** | `S111Grid`, `S111Hdf5Reader` per §7 | All §11 parser golden tests pass |
 | **T3 Orientation** | §7.6 geography test + KDoc the confirmed indexing/direction conventions | Orientation test passes without flipping the fixture expectation |
 | **T4 Catalog + download** | `S111Catalog`, `S111Downloader`, cache guards per §6/§10 | Catalog tests pass; manual run downloads today's CBOFS tile for Chesapeake |
@@ -402,7 +405,7 @@ If this fails, the build stops at T0 per §5.
 
 - **D1 — Library:** approve jHDF 0.13.0 (pure Java, read-only) per §5,
   with the T0 spike as the kill switch.
-- **D2 — Fixtures:** approve committing two real NOAA tiles (~0.59 MB
+- **D2 — Fixtures:** approve committing two real NOAA tiles (~0.91 MB
   total) as test resources in the public repo. (NOAA data are public
   domain; this is a repo-size choice, not a licensing one.)
 - **D3 — Scope of v1:** all three areas (registry covers cbofs/tbofs/
@@ -419,7 +422,7 @@ If this fails, the build stops at T0 per §5.
 ## Appendix A — Sample verified keys (2026-10-17)
 
 ```
-ed1.0.1/model_forecast_guidance/cbofs/2026/10/17/00/dcf2/tiles/111US00_CBOFS_20261017T00Z_US4VA1BD.h5   (350,199 B — golden fixture)
+ed1.0.1/model_forecast_guidance/cbofs/2026/10/17/00/dcf2/tiles/111US00_CBOFS_20261017T00Z_US4VA1BF.h5   (670,347 B — golden fixture)
 ed1.0.1/model_forecast_guidance/cbofs/2026/09/16/00/dcf2/tiles/111US00_CBOFS_20260916T00Z_US4DE1DA.h5   (243,456 B — second fixture)
 ed1.0.1/model_forecast_guidance/cbofs/2026/10/17/00/dcf2/regional/111US00_CBOFS_20261017T00Z.h5          (~12 MB — never download)
 ed1.0.1/model_forecast_guidance/ngofs2/2026/10/01/03/dcf2/tiles/…                                        (03Z cycles — see §3.1)
@@ -431,3 +434,18 @@ Package rename (`com.example`), the duplicated Bluetooth SPP stacks, the
 silent Bluetooth simulation fallback, export provenance flags, and CI are
 tracked separately from the 2026-10-17 SWOT. This build touches none of
 them except where §9's no-silent-fallback rule sets the pattern.
+
+---
+
+## Revision note — v0.1.1 (2026-10-17, same day)
+
+**Correction.** v0.1.0 conflated two CBOFS tiles. The golden fixture was
+cited as `US4VA1BD` with bounds W −76.2 / E −75.9 — but those bounds belong
+to **`US4VA1BF`**, and the 550 valid-cell / 1.03 kn figures were measured on
+`US4VA1BD` (bounds W −76.8 / E −76.5, the James River tile, which does not
+cover the app area centre). Cause: a summary line from the tile scan was
+trusted over the per-file attribute dump. v0.1.1 cites `US4VA1BF`
+throughout, with values re-measured directly from that file (2,403 valid
+cells in Group_001, max 1.67 kn, centre cell 0.61 kn toward 135.3°), and
+the fixture total in D2 rises to ~0.91 MB accordingly. No other section
+changed.
