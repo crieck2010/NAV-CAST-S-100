@@ -1,18 +1,12 @@
 package com.example.data.service
 
-import android.annotation.SuppressLint
-import android.bluetooth.BluetoothAdapter
-import android.bluetooth.BluetoothDevice
-import android.bluetooth.BluetoothSocket
 import android.content.Context
 import android.content.Intent
-import android.content.pm.PackageManager
 import android.net.Uri
-import android.os.Build
 import android.os.Environment
-import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
 import com.example.data.model.BluetoothSppDevice
+import com.example.data.model.DiscoveredVesselInstrument
 import com.example.data.model.NmeaLogEntry
 import com.example.data.model.NoaaDatasetMetadata
 import com.example.data.model.NoaaSurveyDataset
@@ -31,15 +25,12 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
-import java.io.BufferedReader
 import java.io.File
 import java.io.FileWriter
-import java.io.InputStreamReader
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 import java.util.TimeZone
-import java.util.UUID
 
 data class DataServiceStats(
   val totalPacketsReceived: Int = 0,
@@ -61,13 +52,17 @@ enum class ExportFormat(val extension: String, val mimeType: String, val label: 
  * Service to parse incoming NMEA 0183 strings ($SDDPT) from external GPS/depth sounders
  * via Bluetooth SPP (Serial Port Profile) using Kotlin Serialization, and maintain a
  * persistent historical log for post-cruise analysis.
+ *
+ * Transport note (consolidated 2026-10-17): this class no longer opens Bluetooth
+ * sockets itself. All SPP transport lives in [ConnectivityManager] — the single
+ * stack — which delivers sentences through its onSentenceReceived callback.
+ * DataService keeps parsing, the retained log, statistics, and exports.
  */
 class DataService(
   private val context: Context,
   private val scope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 ) {
   companion object {
-    val SPP_UUID: UUID = UUID.fromString("00001101-0000-1000-8000-00805F9B34FB")
     const val RAW_LOG_FILENAME = "noaa_raw_nmea_sddpt.log"
     const val RETAINED_JSON_FILENAME = "noaa_sddpt_retained.json"
     private const val MAX_MEMORY_LOG_ENTRIES = 2000
@@ -79,17 +74,7 @@ class DataService(
     encodeDefaults = true
   }
 
-  private val bluetoothAdapter: BluetoothAdapter? by lazy {
-    try {
-      BluetoothAdapter.getDefaultAdapter()
-    } catch (_: Exception) {
-      null
-    }
-  }
-
-  private var connectionJob: Job? = null
   private var simulationJob: Job? = null
-  private var bluetoothSocket: BluetoothSocket? = null
 
   private val _connectionState = MutableStateFlow(SppConnectionState.DISCONNECTED)
   val connectionState: StateFlow<SppConnectionState> = _connectionState.asStateFlow()
@@ -133,9 +118,7 @@ class DataService(
     }
     scope.launch {
       connectivityManager.connectedInstrument.collect { inst ->
-        if (inst != null) {
-          _connectedDeviceName.value = inst.name
-        }
+        _connectedDeviceName.value = inst?.name ?: "None"
       }
     }
   }
@@ -509,105 +492,51 @@ class DataService(
   }
 
   // ==========================================
-  // BLUETOOTH SPP CONNECTION & STREAMING
+  // BLUETOOTH SPP — DELEGATED TO ConnectivityManager
+  // (single transport stack since 2026-10-17)
   // ==========================================
 
   /**
-   * Retrieves paired Bluetooth devices (e.g. external hydrographic sounders / GPS bridges).
+   * Returns classic paired Bluetooth SPP devices visible to Android OS.
+   * Delegates to [ConnectivityManager] — the single Bluetooth stack.
    */
-  @SuppressLint("MissingPermission")
-  fun getPairedDevices(): List<BluetoothSppDevice> {
-    if (bluetoothAdapter == null || !bluetoothAdapter!!.isEnabled) {
-      return emptyList()
-    }
-
-    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-      if (ContextCompat.checkSelfPermission(context, android.Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED) {
-        return emptyList()
-      }
-    }
-
-    return try {
-      bluetoothAdapter?.bondedDevices?.map { device ->
-        BluetoothSppDevice(
-          name = device.name ?: "Unknown NMEA Sounder",
-          address = device.address,
-          isPaired = true,
-          isConnected = device.address == _connectedDeviceName.value
-        )
-      } ?: emptyList()
-    } catch (e: Exception) {
-      emptyList()
-    }
-  }
+  fun getPairedDevices(): List<BluetoothSppDevice> = connectivityManager.getPairedDevices()
 
   /**
    * Connects to an external GPS/depth sounder via Bluetooth SPP.
+   * Delegates transport to [ConnectivityManager]: the device is classified,
+   * wrapped as a [DiscoveredVesselInstrument], and connected through the same
+   * code path as an instrument picked from discovery — including its
+   * no-silent-simulation-fallback behaviour. Sentences arrive via the
+   * manager's callback and are ingested by this service.
    */
-  @SuppressLint("MissingPermission")
   fun connectToDevice(deviceAddress: String, deviceName: String = "External Echosounder") {
-    disconnect()
-
-    if (bluetoothAdapter == null) {
-      _connectionState.value = SppConnectionState.ERROR
-      return
-    }
-
-    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-      if (ContextCompat.checkSelfPermission(context, android.Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED) {
-        _connectionState.value = SppConnectionState.ERROR
-        return
-      }
-    }
-
-    connectionJob = scope.launch(Dispatchers.IO) {
-      _connectionState.value = SppConnectionState.CONNECTING
-      _connectedDeviceName.value = deviceName
-
-      try {
-        val device: BluetoothDevice = bluetoothAdapter!!.getRemoteDevice(deviceAddress)
-        bluetoothSocket = device.createRfcommSocketToServiceRecord(SPP_UUID)
-        bluetoothAdapter?.cancelDiscovery()
-
-        bluetoothSocket?.connect()
-        _connectionState.value = SppConnectionState.STREAMING
-
-        val inputStream = bluetoothSocket?.inputStream ?: throw IllegalStateException("Socket stream unavailable")
-        val reader = BufferedReader(InputStreamReader(inputStream))
-
-        while (isActive) {
-          val line = reader.readLine() ?: break
-          if (line.isNotBlank()) {
-            ingestSentence(line, sourceDevice = "BT SPP: $deviceName")
-          }
-        }
-      } catch (e: Exception) {
-        _connectionState.value = SppConnectionState.ERROR
-      } finally {
-        disconnectSocket()
-        if (_connectionState.value != SppConnectionState.ERROR) {
-          _connectionState.value = SppConnectionState.DISCONNECTED
-        }
-      }
-    }
+    stopSimulation()
+    val (type, sentences, manufacturer) = connectivityManager.classifyInstrument(deviceName, deviceAddress)
+    connectivityManager.connectInstrument(
+      DiscoveredVesselInstrument(
+        id = deviceAddress,
+        name = deviceName,
+        address = deviceAddress,
+        type = type,
+        rssi = -60,
+        isBonded = true,
+        isConnected = false,
+        supportedSentences = sentences,
+        manufacturer = manufacturer
+      )
+    )
   }
 
   /**
-   * Closes active Bluetooth SPP connection.
+   * Closes the active Bluetooth SPP connection (owned by [ConnectivityManager])
+   * and stops any simulation running in this service.
    */
   fun disconnect() {
-    connectionJob?.cancel()
-    connectionJob = null
-    disconnectSocket()
+    stopSimulation()
+    connectivityManager.disconnectInstrument()
     _connectionState.value = SppConnectionState.DISCONNECTED
     _connectedDeviceName.value = "None"
-  }
-
-  private fun disconnectSocket() {
-    try {
-      bluetoothSocket?.close()
-    } catch (_: Exception) {}
-    bluetoothSocket = null
   }
 
   // ==========================================
@@ -662,7 +591,12 @@ class DataService(
     simulationJob?.cancel()
     simulationJob = null
     _isSimulationActive.value = false
-    if (_connectionState.value == SppConnectionState.STREAMING && bluetoothSocket == null) {
+    // Reset to DISCONNECTED only when this service's own simulation was the
+    // source of the STREAMING state — never tear down the state of a real
+    // Bluetooth connection owned by ConnectivityManager.
+    if (_connectionState.value == SppConnectionState.STREAMING &&
+      connectivityManager.connectionState.value != SppConnectionState.STREAMING
+    ) {
       _connectionState.value = SppConnectionState.DISCONNECTED
       _connectedDeviceName.value = "None"
     }

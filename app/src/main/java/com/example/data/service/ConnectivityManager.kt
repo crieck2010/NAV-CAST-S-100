@@ -11,6 +11,7 @@ import android.content.IntentFilter
 import android.content.pm.PackageManager
 import android.os.Build
 import androidx.core.content.ContextCompat
+import com.example.data.model.BluetoothSppDevice
 import com.example.data.model.DiscoveredVesselInstrument
 import com.example.data.model.SppConnectionState
 import com.example.data.model.VesselInstrumentType
@@ -664,6 +665,37 @@ class ConnectivityManager(
    * Classifies a Bluetooth device by name or address to determine its vessel instrument type,
    * supported NMEA 0183 sentences, and manufacturer.
    */
+  /**
+   * Lists the phone's bonded (paired) Bluetooth devices as simple SPP
+   * targets. This is the single paired-device query for the app —
+   * DataService delegates here (consolidated 2026-10-17; DataService
+   * previously carried a second, duplicate SPP implementation).
+   */
+  @SuppressLint("MissingPermission")
+  fun getPairedDevices(): List<BluetoothSppDevice> {
+    if (bluetoothAdapter == null || !bluetoothAdapter!!.isEnabled) {
+      return emptyList()
+    }
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+      val hasConnect = ContextCompat.checkSelfPermission(
+        context, android.Manifest.permission.BLUETOOTH_CONNECT
+      ) == PackageManager.PERMISSION_GRANTED
+      if (!hasConnect) return emptyList()
+    }
+    return try {
+      bluetoothAdapter?.bondedDevices?.map { device ->
+        BluetoothSppDevice(
+          name = device.name ?: "Unknown NMEA Sounder",
+          address = device.address,
+          isPaired = true,
+          isConnected = device.address == _connectedInstrument.value?.address
+        )
+      } ?: emptyList()
+    } catch (_: Exception) {
+      emptyList()
+    }
+  }
+
   fun classifyInstrument(name: String, address: String): Triple<VesselInstrumentType, List<String>, String> {
     val lower = name.lowercase(Locale.ROOT)
     return when {
