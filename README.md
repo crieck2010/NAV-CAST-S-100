@@ -66,12 +66,12 @@ data over Bluetooth.
 ## Project structure
 
 ```
-app/src/main/java/com/example/
+app/src/main/java/com/crieck2010/navcast/
 ├── data/
 │   ├── api/          NOAA CO-OPS Retrofit service
 │   ├── model/        Navigation, symbology, and NMEA data models
 │   ├── repository/   Survey areas, water-level fetch + fallback
-│   └── service/      Bluetooth SPP connectivity and NMEA DataService
+│   └── service/      Bluetooth SPP connectivity (single stack) + NMEA DataService
 ├── engine/           DukcCalculator, VDatumEngine (pure Kotlin, unit-tested)
 └── ui/               Compose screens, ViewModels, HUD and map components
 ```
@@ -100,7 +100,9 @@ AI Studio artifact and is not needed to build or run the app.
       the auto-start simulation on launch are removed, every NMEA log
       record carries an `isSimulated` flag, and the CSV / raw NMEA / JSON
       exports all state whether simulated data is present
-- [ ] Consolidate the two Bluetooth SPP implementations into one transport
+- [x] Consolidate the two Bluetooth SPP implementations into one transport
+      — done 2026-10-17: ConnectivityManager is the only SPP stack;
+      DataService delegates transport to it
 - [ ] Parse `$GPGGA` / `$GPRMC` so logged soundings carry a real position
 - [ ] Real S-111 HDF5 ingest from NOAA's AWS Open Data distribution —
       specced 2026-10-17, awaiting build go-ahead:
@@ -120,6 +122,12 @@ AI Studio artifact and is not needed to build or run the app.
 - **2026-10-17** — Provenance pass: simulated data labelled end-to-end
   (SIM demo instruments, map layer labels, per-record export flags);
   silent Bluetooth simulation fallback and launch auto-simulation removed.
+- **2026-10-17** — De-branding, SPP consolidation, and package rename:
+  exports/defaults/UI no longer present the app as a NOAA/CSDL product
+  (factual NOAA data-source credits kept); the duplicate Bluetooth SPP
+  stack in DataService was removed in favour of ConnectivityManager;
+  the package is now `com.crieck2010.navcast` (was `com.example`;
+  applicationId unchanged for AI Studio builds).
 
 ## License
 

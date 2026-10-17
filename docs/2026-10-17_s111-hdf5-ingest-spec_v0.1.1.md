@@ -118,7 +118,7 @@ covering the app's Chesapeake area centre:
 ## 4. Architecture
 
 Follow the repo's existing layering. All new code in
-`app/src/main/java/com/example/data/s111/` unless stated.
+`app/src/main/java/com/crieck2010/navcast/data/s111/` unless stated.
 
 ```
 data/s111/
@@ -430,10 +430,19 @@ ed1.0.1/model_forecast_guidance/ngofs2/2026/10/01/03/dcf2/tiles/…             
 
 ## Appendix B — What this spec deliberately does not fix
 
-Package rename (`com.example`), the duplicated Bluetooth SPP stacks, the
-silent Bluetooth simulation fallback, export provenance flags, and CI are
-tracked separately from the 2026-10-17 SWOT. This build touches none of
-them except where §9's no-silent-fallback rule sets the pattern.
+The package rename, the duplicated Bluetooth SPP stacks, the silent
+Bluetooth simulation fallback, and export provenance flags were tracked
+separately from the 2026-10-17 SWOT — and were all fixed on 2026-10-17,
+after this spec was written (see the amendment below). CI remains open.
+This build touches none of them except where §9's no-silent-fallback
+rule sets the pattern.
+
+**Amendment (2026-10-17, later the same day):** the application package
+was renamed from `com.example` to `com.crieck2010.navcast`. Every
+`com/example/…` source path in this spec — including the new
+`data/s111/` package in §6 — now lives under
+`app/src/main/java/com/crieck2010/navcast/…`. No other part of this
+spec changes.
 
 ---
 
